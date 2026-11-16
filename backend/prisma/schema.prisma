@@ -1,0 +1,112 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Lab {
+  id           String        @id
+  name         String
+  direction    String
+  quota        Int
+  mentors      Mentor[]
+  applications Application[]
+}
+
+model Mentor {
+  id           String        @id
+  name         String
+  account      String        @unique
+  direction    String
+  capacity     Int
+  labId        String
+  password     String
+  pwdInitial   Boolean       @default(true)
+  registered   Boolean       @default(false)
+  bio          String        @default("")
+  lab          Lab           @relation(fields: [labId], references: [id])
+  applications Application[]
+}
+
+model Student {
+  id           String        @id
+  name         String
+  studentNo    String        @unique
+  className    String
+  intra        Boolean       @default(false)
+  cross        Boolean       @default(false)
+  password     String
+  pwdInitial   Boolean       @default(true)
+  applications Application[]
+  objections   Objection[]
+  resume       Resume?
+}
+
+model Resume {
+  id        String   @id
+  studentId String   @unique
+  phone     String   @default("")
+  email     String   @default("")
+  intro     String   @default("")
+  awards    String   @default("")
+  selfEval  String   @default("")
+  updatedAt DateTime @updatedAt
+  student   Student  @relation(fields: [studentId], references: [id])
+}
+
+model Application {
+  id        String  @id
+  studentId String
+  mentorId  String
+  labId     String
+  scores    Json?
+  total     Int     @default(0)
+  status    String
+  round     Int
+  method    String?
+  evaluation String @default("")
+  student   Student @relation(fields: [studentId], references: [id])
+  mentor    Mentor  @relation(fields: [mentorId], references: [id])
+  lab       Lab     @relation(fields: [labId], references: [id])
+
+  @@index([labId, round])
+  @@index([studentId])
+}
+
+model Notice {
+  id    String  @id
+  to    String
+  title String
+  body  String
+  time  String
+  read  Boolean @default(false)
+}
+
+model Objection {
+  id        String  @id
+  studentId String
+  reason    String
+  status    String
+  reply     String  @default("")
+  time      String
+  student   Student @relation(fields: [studentId], references: [id])
+}
+
+model SessionState {
+  id    Int    @id @default(1)
+  round Int    @default(1)
+  phase String @default("round")
+}
+
+model Session {
+  token     String   @id
+  role      String
+  userId    String
+  account   String
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}

@@ -1,0 +1,1 @@
+{"root":["./src/app.tsx","./src/authview.tsx","./src/changepassword.tsx","./src/noticecenter.tsx","./src/effects.ts","./src/main.tsx","./src/mock.ts","./src/store.tsx","./src/types.ts","./src/ui.tsx","./src/vite-env.d.ts","./src/views/adminview.tsx","./src/views/mentorview.tsx","./src/views/publicview.tsx","./src/views/studentview.tsx"],"version":"5.9.3"}
