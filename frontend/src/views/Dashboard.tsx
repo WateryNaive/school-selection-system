@@ -230,19 +230,29 @@ export default function Dashboard() {
         </Col>
         <Col xs={12} md={6}>
           <Card>
-            <Statistic title="实训室数量" value={stats.labs.length} suffix="个" prefix={<BarChartOutlined style={{ color: '#2563eb' }} />} />
-          </Card>
-        </Col>
-        <Col xs={12} md={6}>
-          <Card>
-            <Statistic title="导师总名额" value={stats.totalQuota} suffix="人" prefix={<TeamOutlined style={{ color: '#7c3aed' }} />} />
+            <Statistic
+              title="学生总数"
+              value={stats.totalStudents}
+              suffix="人"
+              prefix={<UserOutlined style={{ color: '#2563eb' }} />}
+            />
           </Card>
         </Col>
         <Col xs={12} md={6}>
           <Card>
             <Statistic
-              title="已确认入组"
-              value={stats.confirmedCount}
+              title="导师总数"
+              value={stats.totalMentors}
+              suffix="人"
+              prefix={<TeamOutlined style={{ color: '#7c3aed' }} />}
+            />
+          </Card>
+        </Col>
+        <Col xs={12} md={6}>
+          <Card>
+            <Statistic
+              title="导师名额合计"
+              value={stats.totalQuota}
               suffix="人"
               prefix={<PieChartOutlined style={{ color: '#10b981' }} />}
             />
