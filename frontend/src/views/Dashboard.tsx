@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Button, Card, Col, Row, Segmented, Space, Statistic, Switch, Tag, Typography } from 'antd'
+import { Alert, Button, Card, Col, Row, Segmented, Space, Spin, Statistic, Switch, Tag, Typography } from 'antd'
 import {
   BarChartOutlined,
   PieChartOutlined,
@@ -10,80 +10,89 @@ import {
 import ReactECharts from 'echarts-for-react'
 import type { EChartsOption } from 'echarts'
 
-// ---------- Mock 数据 ----------
-const LABS = [
-  '智能视觉',
-  '自然语言处理',
-  '智能机器人',
-  '大数据与挖掘',
-  '网络安全',
-  '物联网',
-  '智能软件工程',
-]
+// ---------- 后端看板接口返回结构 ----------
+type DashboardStats = {
+  round: number
+  phase: string
+  totalSignups: number
+  totalStudents: number
+  totalQuota: number
+  totalMentors: number
+  confirmedCount: number
+  labs: Array<{ labId: string; name: string; quota: number; signupCount: number }>
+  mentors: Array<{ mentorId: string; name: string; capacity: number; labName: string }>
+}
 
-const BASE_SIGNUPS = [128, 96, 87, 74, 65, 58, 52]
+const EMPTY: DashboardStats = {
+  round: 1,
+  phase: 'round',
+  totalSignups: 0,
+  totalStudents: 0,
+  totalQuota: 0,
+  totalMentors: 0,
+  confirmedCount: 0,
+  labs: [],
+  mentors: [],
+}
 
-const MENTORS = [
-  { name: '王浩然', quota: 12 },
-  { name: '李子涵', quota: 12 },
-  { name: '张欣怡', quota: 10 },
-  { name: '刘宇轩', quota: 10 },
-  { name: '陈梓萱', quota: 8 },
-  { name: '杨思远', quota: 8 },
-  { name: '赵嘉琪', quota: 6 },
-  { name: '黄一鸣', quota: 6 },
-]
-const OTHER_MENTORS_QUOTA = 40
-
-type Round = 'first' | 'second'
-
-const jitter = (value: number, range = 18) =>
-  Math.max(10, value + Math.round((Math.random() - 0.5) * range))
+type RoundKey = 1 | 2
 
 export default function Dashboard() {
-  const [round, setRound] = useState<Round>('first')
+  const [roundKey, setRoundKey] = useState<RoundKey>(1)
   const [autoRefresh, setAutoRefresh] = useState(false)
-  const [signups, setSignups] = useState<number[]>(BASE_SIGNUPS)
+  const [stats, setStats] = useState<DashboardStats>(EMPTY)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [updatedAt, setUpdatedAt] = useState(() => new Date())
 
-  const refresh = () => {
-    setSignups((prev) => prev.map((v) => jitter(v)))
-    setUpdatedAt(new Date())
-  }
-
-  const switchRound = (next: Round) => {
-    setRound(next)
-    setSignups(BASE_SIGNUPS.map((v) => jitter(v, next === 'first' ? 18 : 30)))
-    setUpdatedAt(new Date())
+  const load = async (r: RoundKey) => {
+    setLoading(true)
+    setError(null)
+    try {
+      const res = await fetch(`/api/stats/dashboard?round=${r}`)
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const data: DashboardStats = await res.json()
+      setStats(data)
+      setUpdatedAt(new Date())
+    } catch (e) {
+      setError((e as Error).message)
+    } finally {
+      setLoading(false)
+    }
   }
 
   useEffect(() => {
-    if (!autoRefresh) return
-    const timer = window.setInterval(refresh, 4000)
-    return () => window.clearInterval(timer)
-  }, [autoRefresh])
+    load(roundKey)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [roundKey])
 
-  const { totalSignups, totalQuota } = useMemo(
-    () => ({
-      totalSignups: signups.reduce((a, b) => a + b, 0),
-      totalQuota: MENTORS.reduce((a, b) => a + b.quota, OTHER_MENTORS_QUOTA),
-    }),
-    [signups],
-  )
+  useEffect(() => {
+    if (!autoRefresh) return
+    const timer = window.setInterval(() => load(roundKey), 4000)
+    return () => window.clearInterval(timer)
+  }, [autoRefresh, roundKey])
+
+  const { labs, mentors } = stats
 
   const barOption: EChartsOption = {
     grid: { left: 8, right: 16, top: 48, bottom: 8, containLabel: true },
     tooltip: {
       trigger: 'axis',
       axisPointer: { type: 'shadow' },
-      valueFormatter: (v) => `${v} 人`,
+      formatter: (params) => {
+        const p = Array.isArray(params) ? params[0] : (params as { name?: string; value?: number; dataIndex?: number })
+        const idx = (p as { dataIndex?: number }).dataIndex ?? 0
+        const lab = labs[idx]
+        if (!lab) return ''
+        return `<strong>${lab.name}</strong><br/>报名：${lab.signupCount} 人 / 名额：${lab.quota} 人`
+      },
     },
     xAxis: {
       type: 'category',
-      data: LABS.map((l) => `${l}实训室`),
+      data: labs.map((l) => l.name.replace(/实训室$/, '')),
       axisTick: { show: false },
       axisLine: { lineStyle: { color: '#d8e2ef' } },
-      axisLabel: { color: '#5b6b82', interval: 0, fontSize: 11, rotate: 18 },
+      axisLabel: { color: '#5b6b82', interval: 0, fontSize: 11, rotate: labs.length > 5 ? 18 : 0 },
     },
     yAxis: {
       type: 'value',
@@ -97,33 +106,28 @@ export default function Dashboard() {
         name: '报名人数',
         type: 'bar',
         barWidth: '46%',
-        data: signups,
+        data: labs.map((l) => l.signupCount),
         itemStyle: {
           borderRadius: [8, 8, 0, 0],
           color: {
             type: 'linear',
-            x: 0,
-            y: 0,
-            x2: 0,
-            y2: 1,
+            x: 0, y: 0, x2: 0, y2: 1,
             colorStops: [
               { offset: 0, color: '#22d3ee' },
               { offset: 1, color: '#2563eb' },
             ],
           },
         },
-        emphasis: {
-          itemStyle: { color: '#0891b2' },
-        },
+        emphasis: { itemStyle: { color: '#0891b2' } },
         label: { show: true, position: 'top', color: '#2563eb', fontWeight: 600 },
       },
     ],
   }
 
-  const pieData = [
-    ...MENTORS.map((m) => ({ name: `${m.name} 老师`, value: m.quota })),
-    { name: '其他导师', value: OTHER_MENTORS_QUOTA },
-  ]
+  const pieData = mentors.map((m) => ({
+    name: m.name,
+    value: m.capacity,
+  }))
 
   const pieOption: EChartsOption = {
     tooltip: {
@@ -159,12 +163,11 @@ export default function Dashboard() {
     ],
   }
 
+  const phaseLabel = stats.phase === 'published' ? '结果公示' : stats.phase === 'adjustment' ? '统筹调剂' : '常规阶段'
+
   return (
     <div className="xb-rise">
-      <Card
-        style={{ marginBottom: 16 }}
-        styles={{ body: { padding: '16px 20px' } }}
-      >
+      <Card style={{ marginBottom: 16 }} styles={{ body: { padding: '16px 20px' } }}>
         <Row gutter={[16, 16]} align="middle" justify="space-between">
           <Col>
             <Space size={10} wrap>
@@ -172,27 +175,30 @@ export default function Dashboard() {
               <Typography.Title level={4} style={{ margin: 0, color: '#0f2540' }}>
                 数据看板
               </Typography.Title>
-              <Tag color="blue">Mock 演示数据</Tag>
+              <Tag color="cyan">实时数据</Tag>
+              <Tag color="gold">阶段 {phaseLabel}</Tag>
             </Space>
             <div style={{ marginTop: 6, color: '#94a3b8', fontSize: 12 }}>
               最近更新：{updatedAt.toLocaleTimeString('zh-CN')}
+              {loading && <span style={{ marginLeft: 8 }}>· 加载中…</span>}
+              {error && <span style={{ marginLeft: 8, color: '#ef4444' }}>· 接口异常：{error}</span>}
             </div>
           </Col>
           <Col>
             <Space size={12} wrap>
               <Segmented
-                value={round}
-                onChange={(v) => switchRound(v as Round)}
+                value={roundKey}
+                onChange={(v) => setRoundKey(v as RoundKey)}
                 options={[
-                  { label: '第一轮选报', value: 'first' },
-                  { label: '第二轮递补', value: 'second' },
+                  { label: '第一轮选报', value: 1 },
+                  { label: '第二轮递补', value: 2 },
                 ]}
               />
               <Space size={6} style={{ color: '#5b6b82', fontSize: 13 }}>
                 自动刷新
                 <Switch size="small" checked={autoRefresh} onChange={setAutoRefresh} />
               </Space>
-              <Button icon={<ReloadOutlined />} onClick={refresh}>
+              <Button icon={<ReloadOutlined />} onClick={() => load(roundKey)} loading={loading}>
                 刷新数据
               </Button>
             </Space>
@@ -200,12 +206,23 @@ export default function Dashboard() {
         </Row>
       </Card>
 
+      {error && (
+        <Alert
+          type="error"
+          showIcon
+          message="无法获取看板数据"
+          description={`/api/stats/dashboard 请求失败：${error}。请确认后端服务是否已启动。`}
+          style={{ marginBottom: 16 }}
+          closable
+        />
+      )}
+
       <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
         <Col xs={12} md={6}>
           <Card>
             <Statistic
               title="累计报名人数"
-              value={totalSignups}
+              value={stats.totalSignups}
               suffix="人"
               prefix={<UserOutlined style={{ color: '#0891b2' }} />}
             />
@@ -213,17 +230,22 @@ export default function Dashboard() {
         </Col>
         <Col xs={12} md={6}>
           <Card>
-            <Statistic title="实训室数量" value={LABS.length} suffix="个" prefix={<BarChartOutlined style={{ color: '#2563eb' }} />} />
+            <Statistic title="实训室数量" value={stats.labs.length} suffix="个" prefix={<BarChartOutlined style={{ color: '#2563eb' }} />} />
           </Card>
         </Col>
         <Col xs={12} md={6}>
           <Card>
-            <Statistic title="导师总名额" value={totalQuota} suffix="人" prefix={<TeamOutlined style={{ color: '#7c3aed' }} />} />
+            <Statistic title="导师总名额" value={stats.totalQuota} suffix="人" prefix={<TeamOutlined style={{ color: '#7c3aed' }} />} />
           </Card>
         </Col>
         <Col xs={12} md={6}>
           <Card>
-            <Statistic title="当前阶段" value={round === 'first' ? '第一轮' : '第二轮'} prefix={<PieChartOutlined style={{ color: '#10b981' }} />} />
+            <Statistic
+              title="已确认入组"
+              value={stats.confirmedCount}
+              suffix="人"
+              prefix={<PieChartOutlined style={{ color: '#10b981' }} />}
+            />
           </Card>
         </Col>
       </Row>
@@ -231,12 +253,16 @@ export default function Dashboard() {
       <Row gutter={[16, 16]}>
         <Col xs={24} lg={13}>
           <Card title="各实训室报名人数" extra={<Tag color="cyan">柱状图</Tag>}>
-            <ReactECharts option={barOption} style={{ height: 380 }} notMerge lazyUpdate />
+            <Spin spinning={loading && stats.labs.length === 0}>
+              <ReactECharts option={barOption} style={{ height: 380 }} notMerge lazyUpdate />
+            </Spin>
           </Card>
         </Col>
         <Col xs={24} lg={11}>
           <Card title="导师名额分配" extra={<Tag color="geekblue">饼图</Tag>}>
-            <ReactECharts option={pieOption} style={{ height: 380 }} notMerge lazyUpdate />
+            <Spin spinning={loading && stats.mentors.length === 0}>
+              <ReactECharts option={pieOption} style={{ height: 380 }} notMerge lazyUpdate />
+            </Spin>
           </Card>
         </Col>
       </Row>

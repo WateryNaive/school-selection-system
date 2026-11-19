@@ -36,6 +36,13 @@ export class AppController {
   @Get('public-results')
   publicResults() { return this.selection.bootstrap(null, true) }
 
+  @Get('stats/dashboard')
+  dashboardStats(@Query('round') round?: string) {
+    const parsed = round == null || round === '' ? NaN : Number(round)
+    const r = Number.isFinite(parsed) && parsed > 0 ? parsed : null
+    return this.selection.dashboardStats(r)
+  }
+
   @Post('intentions')
   intentions(@Headers('authorization') header: string, @Body() b: { mentorIds: string[]; prefs: Prefs }) {
     return this.mutate(header, ['student'], (a) => this.selection.fileIntentions(a.userId, b.mentorIds, b.prefs))

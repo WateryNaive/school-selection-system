@@ -334,4 +334,59 @@ export class SelectionService {
     const o = await this.prisma.objection.update({ where: { id }, data: { status, reply } })
     await this.notify(o.studentId, status === 'resolved' ? '异议已受理' : '异议已驳回', reply || (status === 'resolved' ? '已受理并复核。' : '经复核不予采纳。'))
   }
+
+  /** 看板聚合统计：实训室报名柱状图 + 导师名额饼图 + 当前阶段信息 */
+  async dashboardStats(round?: number | null) {
+    const state = await this.prisma.sessionState.findUnique({ where: { id: 1 } })
+    const effectiveRound = round ?? state?.round ?? 1
+
+    const [labs, appCounts, mentorCaps] = await Promise.all([
+      this.prisma.lab.findMany({ orderBy: { name: 'asc' } }),
+      this.prisma.application.groupBy({
+        by: ['labId'],
+        where: { round: effectiveRound },
+        _count: { id: true },
+      }),
+      this.prisma.mentor.findMany({
+        select: { id: true, name: true, capacity: true, lab: { select: { name: true } } },
+        orderBy: { capacity: 'desc' },
+      }),
+    ])
+
+    const countMap = new Map(appCounts.map((g) => [g.labId, g._count.id]))
+
+    const labsData = labs.map((lab) => ({
+      labId: lab.id,
+      name: lab.name,
+      quota: lab.quota,
+      signupCount: countMap.get(lab.id) ?? 0,
+    }))
+
+    const mentorsData = mentorCaps.map((m) => ({
+      mentorId: m.id,
+      name: m.name,
+      capacity: m.capacity,
+      labName: m.lab.name,
+    }))
+
+    const totalSignups = labsData.reduce((s, l) => s + l.signupCount, 0)
+    const totalQuota = mentorsData.reduce((s, m) => s + m.capacity, 0)
+    const totalStudents = await this.prisma.student.count()
+    const totalMentors = mentorCaps.length
+    const confirmedCount = await this.prisma.application.count({
+      where: { round: effectiveRound, status: 'confirmed' },
+    })
+
+    return {
+      round: effectiveRound,
+      phase: state?.phase ?? 'round',
+      totalSignups,
+      totalStudents,
+      totalQuota,
+      totalMentors,
+      confirmedCount,
+      labs: labsData,
+      mentors: mentorsData,
+    }
+  }
 }
