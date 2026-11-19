@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
-import { Avatar, Button, Layout, Space, Tag, Typography } from 'antd'
+import { Avatar, Button, Layout, Menu, Space, Tag, Typography } from 'antd'
 import {
+  DashboardOutlined,
   GlobalOutlined,
   KeyOutlined,
   LogoutOutlined,
@@ -9,12 +10,14 @@ import {
   SolutionOutlined,
   UserOutlined,
 } from '@ant-design/icons'
+import { HashRouter, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import { StoreProvider, api } from './store'
 import { Auth, Role, Session } from './types'
 import StudentView from './views/StudentView'
 import MentorView from './views/MentorView'
 import AdminView from './views/AdminView'
 import PublicView from './views/PublicView'
+import Dashboard from './views/Dashboard'
 import NoticeCenter from './NoticeCenter'
 import AuthView from './AuthView'
 import ChangePassword from './ChangePassword'
@@ -58,6 +61,16 @@ function Shell({
   const { role } = auth
   const who = 'token' in auth ? `${auth.name} · ${auth.account}` : role === 'admin' ? '学院统筹 · 教务管理员' : '公示大厅'
   const viewKey = `${role}:${'token' in auth ? auth.userId : ''}`
+  const location = useLocation()
+  const navigate = useNavigate()
+
+  const homeLabel =
+    role === 'student' ? '我的选报' : role === 'mentor' ? '导师工作台' : role === 'admin' ? '管理后台' : '公示大厅'
+  const menuItems = [
+    { key: '/home', icon: roleMeta[role].icon, label: homeLabel },
+    { key: '/dashboard', icon: <DashboardOutlined />, label: '数据看板' },
+  ]
+  const selectedKey = location.pathname.startsWith('/dashboard') ? '/dashboard' : '/home'
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
@@ -104,17 +117,45 @@ function Shell({
           </Button>
         </Space>
       </Layout.Header>
-      <Layout.Content style={{ padding: 24, maxWidth: 1200, margin: '0 auto', width: '100%' }}>
-        {role === 'student' ? (
-          <StudentView key={viewKey} />
-        ) : role === 'mentor' ? (
-          <MentorView key={viewKey} />
-        ) : role === 'admin' ? (
-          <AdminView key={viewKey} />
-        ) : (
-          <PublicView key={viewKey} />
-        )}
-      </Layout.Content>
+      <Layout>
+        <Layout.Sider
+          theme="light"
+          width={208}
+          breakpoint="lg"
+          collapsedWidth={0}
+          style={{ borderRight: '1px solid #e8eef6', background: 'rgba(255,255,255,.82)' }}
+        >
+          <Menu
+            mode="inline"
+            selectedKeys={[selectedKey]}
+            items={menuItems}
+            onClick={({ key }) => navigate(key)}
+            style={{ borderInlineEnd: 'none', paddingTop: 12, background: 'transparent' }}
+          />
+        </Layout.Sider>
+        <Layout.Content style={{ padding: 24, width: '100%' }}>
+          <div style={{ maxWidth: 1200, margin: '0 auto' }}>
+            <Routes>
+              <Route
+                path="/home"
+                element={
+                  role === 'student' ? (
+                    <StudentView key={viewKey} />
+                  ) : role === 'mentor' ? (
+                    <MentorView key={viewKey} />
+                  ) : role === 'admin' ? (
+                    <AdminView key={viewKey} />
+                  ) : (
+                    <PublicView key={viewKey} />
+                  )
+                }
+              />
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="*" element={<Navigate to="/home" replace />} />
+            </Routes>
+          </div>
+        </Layout.Content>
+      </Layout>
       {'token' in auth && auth.role !== 'admin' && (
         <ChangePassword open={pwdOpen} initial={auth.pwdInitial} token={auth.token} onClose={onPwdClose} onChanged={onPwdChanged} />
       )}
@@ -171,14 +212,16 @@ export default function App() {
       {auth === null ? (
         <AuthView onLogin={login} />
       ) : (
-        <Shell
-          auth={auth}
-          pwdOpen={pwdOpen}
-          onOpenPwd={() => setPwdOpen(true)}
-          onPwdClose={() => setPwdOpen(false)}
-          onPwdChanged={pwdChanged}
-          onLogout={logout}
-        />
+        <HashRouter>
+          <Shell
+            auth={auth}
+            pwdOpen={pwdOpen}
+            onOpenPwd={() => setPwdOpen(true)}
+            onPwdClose={() => setPwdOpen(false)}
+            onPwdChanged={pwdChanged}
+            onLogout={logout}
+          />
+        </HashRouter>
       )}
     </StoreProvider>
   )
