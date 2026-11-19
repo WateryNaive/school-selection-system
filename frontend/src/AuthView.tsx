@@ -263,7 +263,7 @@ export default function AuthView({ onLogin }: { onLogin: (a: Auth) => void }) {
                   loginForm.setFieldsValue({ account: demo.account, password: demo.password })
                   setError('')
                 }}>填入{demo.label}（{demo.account}）</Button>
-              ) : <Typography.Text type="secondary">导师需先注册，注册成功后才会出现在学生的志愿选项中。</Typography.Text>}
+              ) : null}
             </Form>
           </div>
 
