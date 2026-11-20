@@ -128,27 +128,33 @@ export default function Dashboard() {
     name: m.name,
     value: m.capacity,
   }))
+  const mentorNames = pieData.map((d) => d.name)
+  const legendHalf = Math.ceil(mentorNames.length / 2)
+  const legendBase = {
+    orient: 'vertical' as const,
+    top: 'middle' as const,
+    itemWidth: 10,
+    itemHeight: 10,
+    itemGap: 8,
+    textStyle: { color: '#5b6b82', fontSize: 11 },
+    formatter: (name: string) => name.replace(/\s*老师$/, ''),
+  }
 
   const pieOption: EChartsOption = {
     tooltip: {
       trigger: 'item',
       formatter: '{b}<br/>名额：{c} 人（{d}%）',
     },
-    legend: {
-      type: 'scroll',
-      orient: 'vertical',
-      right: 8,
-      top: 'middle',
-      itemWidth: 10,
-      itemHeight: 10,
-      textStyle: { color: '#5b6b82', fontSize: 12 },
-    },
+    legend: [
+      { ...legendBase, left: 4, data: mentorNames.slice(0, legendHalf) },
+      { ...legendBase, right: 4, data: mentorNames.slice(legendHalf) },
+    ],
     series: [
       {
         name: '导师名额分配',
         type: 'pie',
-        radius: ['46%', '72%'],
-        center: ['36%', '52%'],
+        radius: ['36%', '58%'],
+        center: ['50%', '50%'],
         avoidLabelOverlap: true,
         itemStyle: { borderColor: '#fff', borderWidth: 2, borderRadius: 6 },
         label: { show: false },
