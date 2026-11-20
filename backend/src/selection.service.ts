@@ -30,7 +30,7 @@ export class SelectionService {
     students.forEach((s) => (prefs[s.id] = { intra: s.intra, cross: s.cross }))
     const evaluations: Record<string, string> = {}
     apps.forEach((a) => (evaluations[a.id] = a.evaluation))
-    return { labs, mentors, students, applications, prefs, evaluations, round: state?.round ?? 1, phase: state?.phase ?? 'round' }
+    return { labs, mentors, students, applications, prefs, evaluations, round: state?.round ?? 1, phase: state?.phase ?? 'round', paused: state?.filingPaused ?? false }
   }
 
   async bootstrap(actor: Actor | null = null, publicResults = false) {
@@ -77,7 +77,7 @@ export class SelectionService {
     return {
       labs: c.labs, mentors, students, adjustmentCandidates,
       currentStudent: student ? students.find((s) => s.id === actor.userId) ?? null : null,
-      applications, prefs, resumes, round: c.round, phase: c.phase,
+      applications, prefs, resumes, round: c.round, phase: c.phase, paused: c.paused,
       notices: allNotices.filter((n) => admin || (student && (n.to === actor.userId || n.to === 'all'))),
       objections: allObjections.filter((o) => admin || (student && o.studentId === actor.userId)),
     }
@@ -117,13 +117,14 @@ export class SelectionService {
     await this.prisma.notice.create({ data: { id: uid('n'), to, title, body, time: stamp(), read: false } })
   }
 
-  private async setState(data: { round?: number; phase?: string }) {
+  private async setState(data: { round?: number; phase?: string; filingPaused?: boolean }) {
     await this.prisma.sessionState.update({ where: { id: 1 }, data })
   }
 
   async fileIntentions(studentId: string, mentorIds: string[], prefs: Prefs) {
     const c = await this.ctx()
     if (c.phase !== 'round' || c.applications.some((a) => a.studentId === studentId && a.status === 'confirmed')) throw new BadRequestException('当前不能填报意向')
+    if (c.paused) throw new BadRequestException('管理员已暂停填报，暂停期间无法提交或修改意向')
     if (!Array.isArray(mentorIds) || mentorIds.length < 1 || mentorIds.length > 3 || new Set(mentorIds).size !== mentorIds.length) throw new BadRequestException('请选择 1 至 3 位不同的已注册导师')
     if (!prefs || typeof prefs.intra !== 'boolean' || typeof prefs.cross !== 'boolean') throw new BadRequestException('请选择调剂意愿')
     if (mentorIds.some((id) => !c.mentors.some((m) => m.id === id && m.registered))) throw new BadRequestException('只能填报已注册的导师，请刷新导师列表')
@@ -280,6 +281,10 @@ export class SelectionService {
     await this.notify('all', `第 ${c.round} 轮结算完成`, '自动确认与顺位递补已完成，未录取学生请关注后续补录。')
   }
 
+  async setFilingPaused(paused: boolean) {
+    await this.setState({ filingPaused: paused })
+  }
+
   async nextRound() {
     const c = await this.ctx()
     if (c.phase !== 'round' || c.round >= 3) throw new BadRequestException('不能继续开启补录轮次')
@@ -369,7 +374,7 @@ export class SelectionService {
       labName: m.lab.name,
     }))
 
-    const totalSignups = labsData.reduce((s, l) => s + l.signupCount, 0)
+    const totalSignups = await this.prisma.application.count()
     const totalQuota = mentorsData.reduce((s, m) => s + m.capacity, 0)
     const totalStudents = await this.prisma.student.count()
     const totalMentors = mentorCaps.length

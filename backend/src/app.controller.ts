@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Headers, Post, Query } from '@nestjs/common'
+import { BadRequestException, Body, Controller, Get, Headers, Post, Query } from '@nestjs/common'
 import { SelectionService } from './selection.service'
 import { Actor, AuthRole, AuthService, RegisterBody } from './auth.service'
 import { Prefs, Scores } from './algo'
@@ -91,6 +91,12 @@ export class AppController {
   @Post('confirm')
   confirm(@Headers('authorization') header: string, @Body() b: { appId: string }) {
     return this.mutate(header, ['student'], (a) => this.selection.confirm(a.userId, b.appId))
+  }
+
+  @Post('admin/filing-pause')
+  setFilingPause(@Headers('authorization') header: string, @Body() b: { paused: boolean }) {
+    if (typeof b?.paused !== 'boolean') throw new BadRequestException('参数不正确')
+    return this.mutate(header, ['admin'], () => this.selection.setFilingPaused(b.paused))
   }
 
   @Post('settle')

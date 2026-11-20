@@ -22,7 +22,7 @@ async function main() {
       const account = `2026${2001 + i}`
       return {
         id: m.id, name: m.name, direction: m.direction, capacity: m.capacity, labId: m.labId,
-        account, password: hashPassword(initialPasswordOf(account)), pwdInitial: true, registered: false,
+        account, password: hashPassword(initialPasswordOf(account)), pwdInitial: true, registered: true,
       }
     }),
   })

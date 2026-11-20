@@ -35,7 +35,7 @@ const EMPTY: DashboardStats = {
   mentors: [],
 }
 
-type RoundKey = 1 | 2
+type RoundKey = 1 | 2 | 3
 
 export default function Dashboard() {
   const [roundKey, setRoundKey] = useState<RoundKey>(1)
@@ -198,6 +198,7 @@ export default function Dashboard() {
                 options={[
                   { label: '第一轮选报', value: 1 },
                   { label: '第二轮递补', value: 2 },
+                  { label: '第三轮补录', value: 3 },
                 ]}
               />
               <Space size={6} style={{ color: '#5b6b82', fontSize: 13 }}>

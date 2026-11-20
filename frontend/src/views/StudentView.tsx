@@ -31,7 +31,7 @@ export default function StudentView() {
 
 function StudentDashboard({ currentStudent }: { currentStudent: Student }) {
   const { message } = App.useApp()
-  const { labs, mentors, applications, prefs, resumes, round, phase, objections, fileIntentions, confirmAdmission, fileObjection, saveResume, refresh } = useStore()
+  const { labs, mentors, applications, prefs, resumes, round, phase, paused, objections, fileIntentions, confirmAdmission, fileObjection, saveResume, refresh } = useStore()
   const selectableMentors = mentors.filter((m) => m.registered)
   const [submitting, setSubmitting] = useState(false)
   const myApps = applications.filter((a) => a.studentId === currentStudent.id)
@@ -76,7 +76,7 @@ function StudentDashboard({ currentStudent }: { currentStudent: Student }) {
 
   const provisional = myApps.filter((a) => a.status === 'provisional')
   const confirmed = myApps.find((a) => a.status === 'confirmed')
-  const canFile = phase === 'round' && !confirmed
+  const canFile = phase === 'round' && !confirmed && !paused
 
   const doConfirm = async (appId: string) => {
     if (await confirmAdmission(appId)) message.success('已确认录取，其余拟录取意向已释放')
@@ -117,6 +117,8 @@ function StudentDashboard({ currentStudent }: { currentStudent: Student }) {
         />
       ) : phase !== 'round' ? (
         <Alert type="warning" showIcon message="当前阶段不再接受意向填报" description="统筹调剂与公示由管理员统一推进，请前往「我的状态」查看最终去向。" />
+      ) : paused ? (
+        <Alert type="warning" showIcon message="管理员已暂停填报" description="暂停期间无法提交或修改意向，已填报的数据予以保留。恢复后可继续填报。" />
       ) : (
         <Alert
           type="info"

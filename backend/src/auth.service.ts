@@ -56,7 +56,7 @@ export class AuthService implements OnModuleInit {
       await this.prisma.mentor.create({
         data: {
           id: uid('m'), name: `${name.replace(/老师$/, '').trim()} 老师`, account,
-          direction: b.direction?.trim() || lab.direction, capacity: 20, labId: lab.id,
+          direction: b.direction?.trim() || lab.direction, capacity: 16, labId: lab.id,
           password: hashPassword(initialPassword), pwdInitial: true, registered: true,
         },
       })

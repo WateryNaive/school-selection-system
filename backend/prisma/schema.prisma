@@ -96,9 +96,10 @@ model Objection {
 }
 
 model SessionState {
-  id    Int    @id @default(1)
-  round Int    @default(1)
-  phase String @default("round")
+  id           Int     @id @default(1)
+  round        Int     @default(1)
+  phase        String  @default("round")
+  filingPaused Boolean @default(false)
 }
 
 model Session {

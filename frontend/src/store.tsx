@@ -15,6 +15,7 @@ type Bootstrap = {
   resumes: Record<string, Resume>
   round: number
   phase: Phase
+  paused: boolean
   notices: Notice[]
   objections: Objection[]
 }
@@ -33,6 +34,7 @@ interface Store extends Bootstrap {
   generateLists: () => Promise<boolean>
   confirmAdmission: (appId: string) => Promise<boolean>
   settleRound: () => Promise<boolean>
+  setFilingPaused: (paused: boolean) => Promise<boolean>
   startNextRound: () => Promise<boolean>
   runAdjustment: () => Promise<boolean>
   allocateAdjustment: () => Promise<boolean>
@@ -144,6 +146,7 @@ export function StoreProvider({ auth, onSessionExpired, children }: { auth: Auth
     generateLists: () => run('generate', {}),
     confirmAdmission: (appId) => run('confirm', { appId }),
     settleRound: () => run('settle', {}),
+    setFilingPaused: (paused) => run('admin/filing-pause', { paused }),
     startNextRound: () => run('next-round', {}),
     runAdjustment: () => run('adjust', {}),
     allocateAdjustment: () => run('allocate', {}),

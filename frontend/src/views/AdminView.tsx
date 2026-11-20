@@ -34,8 +34,8 @@ const ADJUST_METHODS: AdmissionMethod[] = ['intra', 'cross', 'manual']
 export default function AdminView() {
   const { message } = App.useApp()
   const {
-    labs, mentors, students, applications, round, phase, objections,
-    settleRound, startNextRound, runAdjustment, allocateAdjustment, publish, resolveObjection, adminUpdateMentorProfile,
+    labs, mentors, students, applications, round, phase, paused, objections,
+    settleRound, setFilingPaused, startNextRound, runAdjustment, allocateAdjustment, publish, resolveObjection, adminUpdateMentorProfile,
   } = useStore()
   const [settledRound, setSettledRound] = useState<number | null>(null)
   const [handling, setHandling] = useState<Objection | null>(null)
@@ -87,6 +87,9 @@ export default function AdminView() {
   const doPublish = async () => {
     if (!(await publish())) return
     message.success('录取结果已公示，流程结束')
+  }
+  const doTogglePause = async () => {
+    if (await setFilingPaused(!paused)) message.success(paused ? '已恢复填报，学生可以继续提交或修改意向' : '已暂停填报，学生暂不能提交或修改意向')
   }
 
   const guidance =
@@ -266,6 +269,14 @@ export default function AdminView() {
               <Tag key={m} color={methodMeta[m].color}>{methodMeta[m].text} {methodCount(m)}</Tag>
             ))}
           </Space>
+          <Space size="middle" wrap>
+            <Typography.Text type="secondary">意向填报：</Typography.Text>
+            {paused ? <Tag color="orange">已暂停</Tag> : <Tag color="green">开放中</Tag>}
+            <Button danger={!paused} disabled={phase !== 'round'} onClick={doTogglePause}>
+              {paused ? '恢复填报' : '暂停填报'}
+            </Button>
+            <Typography.Text type="secondary">暂停后学生无法提交或修改意向，已填报的数据保留；导师评分与轮次结算不受影响。</Typography.Text>
+          </Space>
         </Space>
       </Card>
 
@@ -320,7 +331,7 @@ export default function AdminView() {
       </Card>
 
       <Card
-        title={`异议处理工作台（公示期 24 小时内）${pendingCount ? ` · 待处理 ${pendingCount}` : ''}`}
+        title={`异议处理工作台（公示期 3 天 · 24 小时内处理）${pendingCount ? ` · 待处理 ${pendingCount}` : ''}`}
       >
         {objections.length === 0 ? (
           <Empty description="暂无异议，公示期内学生可在学生视图提交" />

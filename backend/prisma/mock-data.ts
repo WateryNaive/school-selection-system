@@ -27,7 +27,7 @@ const LAB_DEFS = [
 // 3+3+3+3+2+2+2 = 18 导师
 const MENTOR_DIRECTIONS = ['深度学习', '强化学习', '多模态大模型', '边缘计算', '推荐系统', '知识图谱', '自动驾驶', '语音识别', '联邦学习', '图神经网络', '目标检测', '生成式AI', '时序预测', '机器人SLAM', '数据挖掘']
 
-const MENTOR_CAPACITY = 20
+const MENTOR_CAPACITY = 16
 
 export const mentors: Mentor[] = []
 export const labs: Lab[] = LAB_DEFS.map((d, li) => {
